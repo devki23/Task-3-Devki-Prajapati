@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing Email Analyzer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f4f8; min-height: 100vh; padding: 30px 20px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { text-align: center; color: #1a202c; font-size: 26px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #718096; font-size: 14px; margin-bottom: 30px; }
+  .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 16px; color: #2d3748; margin-bottom: 14px; }
+  textarea { width: 100%; height: 200px; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 13px; font-family: monospace; resize: vertical; outline: none; color: #2d3748; line-height: 1.6; }
+  textarea:focus { border-color: #667eea; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-check { background: #667eea; color: white; }
+  .btn-check:hover { background: #5a67d8; }
+  .btn-clear { background: #e2e8f0; color: #4a5568; }
+  .btn-clear:hover { background: #cbd5e0; }
+  .result { display: none; margin-top: 20px; border-radius: 10px; overflow: hidden; border: 1.5px solid #e2e8f0; }
+  .result-header { padding: 18px 20px; display: flex; align-items: center; gap: 14px; }
+  .result-icon { font-size: 32px; }
+  .verdict-text { font-size: 20px; font-weight: 700; }
+  .verdict-sub { font-size: 13px; margin-top: 2px; }
+  .result-safe .result-header { background: #f0fff4; }
+  .result-safe .verdict-text { color: #276749; }
+  .result-safe .verdict-sub { color: #48bb78; }
+  .result-warn .result-header { background: #fffbeb; }
+  .result-warn .verdict-text { color: #92400e; }
+  .result-warn .verdict-sub { color: #d97706; }
+  .result-danger .result-header { background: #fff5f5; }
+  .result-danger .verdict-text { color: #9b2c2c; }
+  .result-danger .verdict-sub { color: #e53e3e; }
+  .flags-list { padding: 18px 20px; background: white; }
+  .flag { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+  .flag:last-child { margin-bottom: 0; }
+  .flag-dot { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+  .flag-dot.bad { background: #fed7d7; color: #c53030; }
+  .flag-dot.ok { background: #c6f6d5; color: #276749; }
+  .flag-name { font-size: 14px; font-weight: 600; color: #2d3748; }
+  .flag-desc { font-size: 12px; color: #718096; margin-top: 3px; line-height: 1.5; }
+  .action-bar { padding: 14px 20px; font-size: 13px; font-weight: 600; border-top: 1px solid #e2e8f0; }
+  .action-bar.safe { background: #f0fff4; color: #276749; }
+  .action-bar.warn { background: #fffbeb; color: #92400e; }
+  .action-bar.danger { background: #fff5f5; color: #9b2c2c; }
+  .samples-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .sample-btn { background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: left; cursor: pointer; transition: border-color 0.2s; }
+  .sample-btn:hover { border-color: #667eea; }
+  .sample-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; }
+  .tag-phish { background: #fed7d7; color: #c53030; }
+  .tag-safe { background: #c6f6d5; color: #276749; }
+  .sample-title { font-size: 13px; font-weight: 600; color: #2d3748; }
+  .sample-desc { font-size: 12px; color: #718096; margin-top: 3px; }
+  .score-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .score-bar-bg { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+  footer { text-align: center; margin-top: 30px; font-size: 12px; color: #a0aec0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🛡️ Phishing Email Analyzer</h1>
+  <p class="subtitle">Project 3 – Phishing Awareness Analysis | DecodeLabs 2026</p>
+
+  <!-- SAMPLE EMAILS -->
+  <div class="card">
+    <h2>📧 Sample Emails — Click to Load</h2>
+    <div class="samples-grid">
+
+      <button class="sample-btn" onclick="loadSample(0)">
+        <span class="sample-tag tag-phish">PHISHING</span>
+        <div class="sample-title">PayPal Account Suspended</div>
+        <div class="sample-desc">Urgency + fake domain</div>
+      </button>
+
+      <button class="sample-btn" onclick="loadSample(1)">
+        <span class="sample-tag tag-phish">PHISHING</span>
+        <div class="sample-title">CEO Wire Transfer</div>
+        <div class="sample-desc">BEC / whaling attack</div>
+      </button>
+
+      <button class="sample-btn" onclick="loadSample(2)">
+        <span class="sample-tag tag-phish">PHISHING</span>
+        <div class="sample-title">Microsoft Password Expiry</div>
+        <div class="sample-desc">Credential harvesting</div>
+      </button>
+
+      <button class="sample-btn" onclick="loadSample(3)">
+        <span class="sample-tag tag-phish">PHISHING</span>
+        <div class="sample-title">FedEx Package Alert</div>
+        <div class="sample-desc">Fake delivery + payment</div>
+      </button>
+
+      <button class="sample-btn" onclick="loadSample(4)">
+        <span class="sample-tag tag-safe">SAFE</span>
+        <div class="sample-title">Team Project Update</div>
+        <div class="sample-desc">Normal internal email</div>
+      </button>
+
+      <button class="sample-btn" onclick="loadSample(5)">
+        <span class="sample-tag tag-safe">SAFE</span>
+        <div class="sample-title">Google Security Notice</div>
+        <div class="sample-desc">Legitimate notification</div>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ANALYZER -->
+  <div class="card">
+    <h2>🔍 Paste Email Below & Analyze</h2>
+    <textarea id="emailInput" placeholder="Paste full email here — include From, Subject, and Body..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-check" onclick="analyzeEmail()">✔ Check Email</button>
+      <button class="btn btn-clear" onclick="clearEmail()">✖ Clear</button>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result" id="resultBox">
+      <div class="result-header" id="resultHeader">
+        <div class="result-icon" id="resultIcon"></div>
+        <div style="flex:1">
+          <div class="verdict-text" id="verdictText"></div>
+          <div class="verdict-sub" id="verdictSub"></div>
+          <div class="score-row">
+            <div class="score-bar-bg">
+              <div class="score-bar-fill" id="scoreBar"></div>
+            </div>
+            <span id="scoreLabel" style="font-size:12px;color:#718096;white-space:nowrap"></span>
+          </div>
+        </div>
+      </div>
+      <div class="flags-list" id="flagsList"></div>
+      <div class="action-bar" id="actionBar"></div>
+    </div>
+  </div>
+
+  <footer>Built for DecodeLabs Cyber Security Industrial Training — Batch 2026</footer>
+</div>
+
+<script>
+var SAMPLES = [
+  `From: PayPal Support <security@secure-paypa1.com>\nSubject: URGENT: Your account has been suspended!\n\nDear Customer,\n\nUnusual activity detected on your PayPal account. Your account will be permanently suspended within 24 hours unless you verify your details immediately.\n\nClick here to restore your account: http://paypal-secure-login.xyz/verify\n\nDo NOT ignore this message. Failure to act will result in permanent account closure.\n\nPayPal Security Team`,
+
+  `From: CEO Name <ceo.urgent@executive-update.com>\nSubject: IMMEDIATE ACTION REQUIRED: Transfer Authorization\n\nThis is STRICTLY CONFIDENTIAL.\n\nProcess a wire transfer of $50,000 immediately. Do not discuss with anyone. Bypass standard procedure - this is time sensitive.\n\nDo not reply to this email. Call my personal number only.\n\nThank you,\nCEO`,
+
+  `From: IT Security <it-support@microsofft-helpdesk.com>\nSubject: Mandatory: Password expires in 24 hrs\n\nDear Employee,\n\nYour Microsoft 365 password will expire in 24 hours. Reset it immediately to avoid losing access.\n\nReset now: https://microsoft.login-update.net/reset\n\nThis link expires in 1 hour. Act now or your account will be locked.\n\nIT Security Team`,
+
+  `From: FedEx Delivery <noreply@fedex-delivery-alerts.net>\nSubject: Your package could not be delivered\n\nDear Customer,\n\nWe attempted to deliver your package #FX9284773 today but failed.\n\nPay a redelivery fee of $1.99 here: http://fedex.parcel-reschedule.com/pay\n\nThis link expires in 48 hours.\n\nFedEx Customer Support`,
+
+  `From: Sarah Lee <sarah.lee@company.com>\nSubject: Q3 Project Status Update - Non-Urgent\n\nHi Team,\n\nPlease review the attached Q3 project status at your earliest convenience.\n\nNo immediate action is required. We will discuss in our Friday standup.\n\nThanks,\nSarah\n\nAttachment: Q3_Status.pdf`,
+
+  `From: Google <no-reply@accounts.google.com>\nSubject: Your Google Account password was changed\n\nHi,\n\nYour Google Account password was recently changed. If you made this change, you don't need to do anything.\n\nIf you didn't change your password, visit myaccount.google.com to secure your account.\n\nThe Google Accounts team`
+];
+
+function loadSample(i) {
+  document.getElementById('emailInput').value = SAMPLES[i];
+  document.getElementById('resultBox').style.display = 'none';
+}
+
+function clearEmail() {
+  document.getElementById('emailInput').value = '';
+  document.getElementById('resultBox').style.display = 'none';
+}
+
+function analyzeEmail() {
+  var text = document.getElementById('emailInput').value;
+  if (!text.trim()) { alert('Please paste an email first!'); return; }
+  var t = text.toLowerCase();
+  var flags = [];
+
+  // Check 1: Suspicious domain
+  var badDomains = ['paypa1','microsofft','fedex-delivery-alerts','executive-update','secure-paypa1','-secure-login','login-update','parcel-reschedule','logins-updates'];
+  if (badDomains.some(function(d){ return t.indexOf(d) !== -1; }))
+    flags.push({ bad: true, name: 'Suspicious / fake domain', desc: 'The sender email domain is misspelled or fake (e.g. paypa1.com instead of paypal.com).' });
+
+  // Check 2: Urgency words
+  var urgency = ['immediately','urgent','within 24 hours','expires in','suspended','permanently','act now','24 hrs','1 hour','48 hours','will be locked','do not ignore'];
+  if (urgency.some(function(w){ return t.indexOf(w) !== -1; }))
+    flags.push({ bad: true, name: 'Urgency / pressure language', desc: 'Message creates artificial time pressure to stop you from thinking carefully.' });
+
+  // Check 3: Sensitive action
+  var actions = ['wire transfer','verify your','update billing','reset password','click here','restore access','redelivery fee','confirm your','enter your','pay a'];
+  if (actions.some(function(w){ return t.indexOf(w) !== -1; }))
+    flags.push({ bad: true, name: 'Sensitive action requested', desc: 'Asking for payment, password, or personal info — legitimate companies never do this via email.' });
+
+  // Check 4: Secrecy demand
+  var secrecy = ['do not discuss','strictly confidential','bypass standard','do not tell','keep this confidential','do not reply to this email'];
+  if (secrecy.some(function(w){ return t.indexOf(w) !== -1; }))
+    flags.push({ bad: true, name: 'Secrecy or bypass demand', desc: 'Asking you to keep things secret or skip normal procedures is a classic BEC attack sign.' });
+
+  // Check 5: Suspicious URL
+  var badUrls = ['http://','login-update','secure-login.xyz','parcel-reschedule','.xyz/','-helpdesk','login-update.net'];
+  if (badUrls.some(function(w){ return t.indexOf(w) !== -1; }))
+    flags.push({ bad: true, name: 'Suspicious link / URL', desc: 'URL does not match the real brand domain. Always read URLs from right to left to find the true domain.' });
+
+  // Check 6: Generic greeting
+  var generic = ['dear customer','dear user','dear account holder','dear employee'];
+  if (generic.some(function(w){ return t.indexOf(w) !== -1; }))
+    flags.push({ bad: true, name: 'Generic greeting used', desc: 'Real companies address you by name. "Dear Customer" means it is a mass phishing template.' });
+
+  var badCount = flags.filter(function(f){ return f.bad; }).length;
+
+  if (badCount === 0) {
+    flags.push({ bad: false, name: 'No red flags detected', desc: 'Sender domain looks legitimate, no urgency language, no suspicious links found.' });
+    flags.push({ bad: false, name: 'Professional tone, no pressure', desc: 'Email does not demand immediate action or sensitive information.' });
+  }
+
+  // Verdict
+  var verdict, sub, icon, cls, action, barColor, barWidth;
+  if (badCount === 0) {
+    verdict = 'SAFE'; sub = 'This email appears legitimate.';
+    icon = '✅'; cls = 'result-safe'; action = '✔ Action: No threat detected. You can interact with this email normally.';
+    barColor = '#48bb78'; barWidth = '15%';
+  } else if (badCount <= 2) {
+    verdict = 'SUSPICIOUS'; sub = 'Verify before taking any action.';
+    icon = '⚠️'; cls = 'result-warn'; action = '⚠ Action: Do NOT click any links. Call the sender directly using a known number to verify.';
+    barColor = '#d97706'; barWidth = '55%';
+  } else {
+    verdict = 'PHISHING'; sub = 'Do not interact with this email!';
+    icon = '🚨'; cls = 'result-danger'; action = '🚫 Action: Block sender. Report to your security team. Do NOT click, reply, or open attachments.';
+    barColor = '#e53e3e'; barWidth = '95%';
+  }
+
+  var box = document.getElementById('resultBox');
+  box.className = 'result ' + cls;
+  box.style.display = 'block';
+  document.getElementById('resultIcon').textContent = icon;
+  document.getElementById('verdictText').textContent = verdict;
+  document.getElementById('verdictSub').textContent = sub;
+  document.getElementById('scoreBar').style.cssText = 'width:' + barWidth + ';background:' + barColor;
+  document.getElementById('scoreLabel').textContent = badCount + ' red flag(s) found';
+
+  var html = '';
+  flags.forEach(function(f) {
+    html += '<div class="flag">' +
+      '<div class="flag-dot ' + (f.bad ? 'bad' : 'ok') + '">' + (f.bad ? '✗' : '✓') + '</div>' +
+      '<div><div class="flag-name">' + f.name + '</div><div class="flag-desc">' + f.desc + '</div></div>' +
+      '</div>';
+  });
+  document.getElementById('flagsList').innerHTML = html;
+
+  var ab = document.getElementById('actionBar');
+  ab.textContent = action;
+  ab.className = 'action-bar ' + (badCount === 0 ? 'safe' : badCount <= 2 ? 'warn' : 'danger');
+
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
